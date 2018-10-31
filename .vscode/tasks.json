@@ -15,7 +15,7 @@
         },
         {
             "label": "make",
-            "command": "make -j 8 && ${workspaceRoot}/build/simpleopengl/simpleopengl",
+            "command": "make -j 8 && ${workspaceRoot}/build/basegl/basegl",
             "group": "build",
             "problemMatcher": []
         }
