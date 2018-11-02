@@ -15,7 +15,7 @@
         },
         {
             "label": "make",
-            "command": "make -j 8 && ${workspaceRoot}/build/basegl/basegl",
+            "command": "make -j 8 -Wnested-anon-types && ${workspaceRoot}/build/basegl/basegl",
             "group": "build",
             "problemMatcher": []
         }

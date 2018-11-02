@@ -1,0 +1,19 @@
+# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
+# File Created: 19.03.2016 18:15:47
+
+newmtl SF_Light_Fighter_X6
+	Ns 29.999998
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000
+	illum 2
+	Ka 1.000000 1.000000 1.000000
+	Kd 1.000000 1.000000 1.000000
+	Ks 0.270000 0.270000 0.270000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka SF_Light-Fighter-X6-Diffuse.jpg
+	map_Kd SF_Light-Fighter-X6-Diffuse.jpg
+	map_Ke SF_Light-Fighter-X6-Glow.jpg
+	map_bump SF_Light-Fighter-X6-NormalMap.jpg
+	bump SF_Light-Fighter-X6-NormalMap.jpg
