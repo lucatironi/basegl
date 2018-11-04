@@ -26,6 +26,10 @@ bool firstMouse = true;
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
 
+// shader vars
+bool norm = false;
+bool normKeyPressed = false;
+
 int main()
 {
     // glfw: initialize and configure
@@ -80,7 +84,8 @@ int main()
 
     // lighting info
     // -------------
-    glm::vec3 lightPos(1.0f, -1.0f, 1.0f);
+    glm::vec3 lightPos(10.0f, 10.0f, -10.0f);
+    glm::vec3 ambientColor(0.6f, 0.6f, 1.0f);
 
     // render loop
     // -----------
@@ -107,6 +112,8 @@ int main()
         // set lighting uniforms
         baseShader.SetVector3f("viewPos", camera.Position);
         baseShader.SetVector3f("lightPos", lightPos);
+        baseShader.SetVector3f("ambientColor", ambientColor);
+        baseShader.SetInteger("norm", norm);
 
         // pass projection matrix to shader (note that in this case it could change every frame)
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 100.0f);
@@ -160,6 +167,16 @@ void processInput(GLFWwindow *window)
         camera.ProcessKeyboard(CAMERA_DOWN, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
         camera.ProcessKeyboard(CAMERA_UP, deltaTime);
+    
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS && !normKeyPressed) 
+    {
+        norm = !norm;
+        normKeyPressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_RELEASE) 
+    {
+        normKeyPressed = false;
+    }
 }
 
 // glfw: whenever the mouse moves, this callback is called
