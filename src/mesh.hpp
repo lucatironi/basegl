@@ -47,7 +47,7 @@ class Mesh {
         Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
         {
             this->vertices = vertices;
-            this->indices = indices;
+            this->indices  = indices;
             this->textures = textures;
 
             // now that we have all the required data, set the vertex buffers and its attribute pointers.
@@ -61,6 +61,7 @@ class Mesh {
             unsigned int diffuseNr  = 1;
             unsigned int specularNr = 1;
             unsigned int normalNr   = 1;
+            unsigned int emissionNr = 1;
             for(unsigned int i = 0; i < textures.size(); i++)
             {
                 glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding
@@ -68,13 +69,15 @@ class Mesh {
                 string number;
                 string name = textures[i].type;
                 if(name == "texture_diffuse")
-                    number = std::to_string(diffuseNr++);
+                    number = std::to_string(diffuseNr++); // transfer unsigned int to stream
                 else if(name == "texture_specular")
-                    number = std::to_string(specularNr++); // transfer unsigned int to stream
-                else if(name == "texture_normal")
-                    number = std::to_string(normalNr++); // transfer unsigned int to stream
+                    number = std::to_string(specularNr++);
+                else if (name == "texture_normal")
+                    number = std::to_string(normalNr++);
+                else if (name == "texture_emission")
+                    number = std::to_string(emissionNr++);
 
-                                                        // now set the sampler to the correct texture unit
+                // now set the sampler to the correct texture unit
                 glUniform1i(glGetUniformLocation(shader.ID, (name + number).c_str()), i);
                 // and finally bind the texture
                 glBindTexture(GL_TEXTURE_2D, textures[i].id);

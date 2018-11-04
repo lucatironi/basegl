@@ -151,6 +151,7 @@ class Model
             // diffuse: texture_diffuseN
             // specular: texture_specularN
             // normal: texture_normalN
+            // emission: texture_emissionN
 
             // 1. diffuse maps
             vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
@@ -161,6 +162,9 @@ class Model
             // 3. normal maps
             vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
             textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+            // 4. emission maps
+            vector<Texture> emissionMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emission");
+            textures.insert(textures.end(), emissionMaps.begin(), emissionMaps.end());
 
             // return a mesh object created from the extracted mesh data
             return Mesh(vertices, indices, textures);

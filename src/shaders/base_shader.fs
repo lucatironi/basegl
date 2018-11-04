@@ -9,15 +9,19 @@ in VS_OUT {
     vec3 TangentFragPos;
 } fs_in;
 
+struct Light {
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
 uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_normal1;
+uniform sampler2D texture_specular1;
+uniform sampler2D texture_emission1;
 
-uniform vec3 ambientColor;
-
-uniform vec3 lightPos;
 uniform vec3 viewPos;
-
-uniform bool norm;
+uniform Light light;
 
 void main()
 {
@@ -31,22 +35,19 @@ void main()
     // get texture color
     vec3 color = texture(texture_diffuse1, fs_in.TexCoords).rgb;
     // ambient
-    vec3 ambient = ambientColor * color;
+    vec3 ambient = light.ambient * color;
     // diffuse
     float diff = max(dot(viewDir, normal), 0.0);
-    vec3 diffuse = diff * ambientColor;
+    vec3 diffuse = light.diffuse * diff * color;
     // specular
     vec3 reflectDir = reflect(-lightDir, normal);
     vec3 halfwayDir = normalize(lightDir + viewDir);
     float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
-    vec3 specular = vec3(0.2) * spec;
+    vec3 specular = light.specular * spec * texture(texture_specular1, fs_in.TexCoords).rgb;
 
-    if (norm)
-    {
-        FragColor = vec4(diffuse, 1.0);
-    }
-    else
-    {
-        FragColor = vec4(color, 1.0);
-    }
+    // emission
+    vec3 emission = texture(texture_emission1, fs_in.TexCoords).rgb;
+
+    vec3 result = ambient + diffuse + specular + emission;
+    FragColor = vec4(result, 1.0);
 }

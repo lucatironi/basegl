@@ -17,7 +17,7 @@ const unsigned int WINDOW_WIDTH = 800;
 const unsigned int WINDOW_HEIGHT = 600;
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(-5.0f, 5.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -35.0f, -40.0f);
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -25,10 +25,6 @@ bool firstMouse = true;
 // timing
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
-
-// shader vars
-bool norm = false;
-bool normKeyPressed = false;
 
 int main()
 {
@@ -45,7 +41,7 @@ int main()
 
     // glfw window creation
     // --------------------
-    GLFWwindow *window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "SimpleOpenGL", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "BaseOpenGL", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -79,13 +75,7 @@ int main()
 
     // load models
     // -----------
-    Model charModel("../assets/models/nanosuit/nanosuit.obj");
     Model shipModel("../assets/models/SF_Light-Fighter_X6/SF_Light_Fighter-X6.obj");
-
-    // lighting info
-    // -------------
-    glm::vec3 lightPos(10.0f, 10.0f, -10.0f);
-    glm::vec3 ambientColor(0.6f, 0.6f, 1.0f);
 
     // render loop
     // -----------
@@ -103,17 +93,20 @@ int main()
 
         // render
         // ------
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // activate shader
         baseShader.Use();
 
         // set lighting uniforms
+        baseShader.SetVector3f("lightPos", -10.0f, 10.0f, -10.0f);
         baseShader.SetVector3f("viewPos", camera.Position);
-        baseShader.SetVector3f("lightPos", lightPos);
-        baseShader.SetVector3f("ambientColor", ambientColor);
-        baseShader.SetInteger("norm", norm);
+
+        // light properties
+        baseShader.SetVector3f("light.ambient", 0.5f, 0.5f, 0.5f);
+        baseShader.SetVector3f("light.diffuse", 1.0f, 1.0f, 1.0f);
+        baseShader.SetVector3f("light.specular", 1.0f, 1.0f, 1.0f);
 
         // pass projection matrix to shader (note that in this case it could change every frame)
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 100.0f);
@@ -125,14 +118,8 @@ int main()
 
         // calculate the model matrix for each object and pass it to shader before drawing
         glm::mat4 model = glm::mat4(1.0);
-        model = glm::translate(model, glm::vec3(-2.0f, 0.0f, -2.0f));
-        model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
-        baseShader.SetMatrix4("model", model);
-        charModel.Draw(baseShader);
-
-        model = glm::mat4(1.0);
-        model = glm::translate(model, glm::vec3(2.0f, 1.0f, -2.0f));
-        model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
+        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
         baseShader.SetMatrix4("model", model);
         shipModel.Draw(baseShader);
 
@@ -167,16 +154,6 @@ void processInput(GLFWwindow *window)
         camera.ProcessKeyboard(CAMERA_DOWN, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
         camera.ProcessKeyboard(CAMERA_UP, deltaTime);
-    
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS && !normKeyPressed) 
-    {
-        norm = !norm;
-        normKeyPressed = true;
-    }
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_RELEASE) 
-    {
-        normKeyPressed = false;
-    }
 }
 
 // glfw: whenever the mouse moves, this callback is called
