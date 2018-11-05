@@ -27,6 +27,8 @@ void main()
 {
     vec3 viewDir = normalize(fs_in.TangentViewPos - fs_in.TangentFragPos);
     vec3 lightDir = normalize(fs_in.TangentLightPos - fs_in.TangentFragPos);
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+
      // obtain normal from normal map in range [0,1]
     vec3 normal = texture(texture_normal1, fs_in.TexCoords).rgb;
     // transform normal vector to range [-1,1]
@@ -40,9 +42,7 @@ void main()
     float diff = max(dot(viewDir, normal), 0.0);
     vec3 diffuse = light.diffuse * diff * color;
     // specular
-    vec3 reflectDir = reflect(-lightDir, normal);
-    vec3 halfwayDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), 64.0);
     vec3 specular = light.specular * spec * texture(texture_specular1, fs_in.TexCoords).rgb;
 
     // emission
