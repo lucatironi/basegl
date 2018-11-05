@@ -29,7 +29,7 @@ void main()
     vec3 lightDir = normalize(fs_in.TangentLightPos - fs_in.TangentFragPos);
     vec3 halfwayDir = normalize(lightDir + viewDir);
 
-     // obtain normal from normal map in range [0,1]
+    // obtain normal from normal map in range [0,1]
     vec3 normal = texture(texture_normal1, fs_in.TexCoords).rgb;
     // transform normal vector to range [-1,1]
     normal = normalize(normal * 2.0 - 1.0); // this normal is in tangent space

@@ -84,15 +84,15 @@ int main()
     // Model charModel("../assets/models/nanosuit/nanosuit.obj");
     Model shipModel("../assets/models/SF_Light-Fighter_X6/SF_Light_Fighter-X6.obj");
     std::vector<glm::vec3> objectPositions;
-    objectPositions.push_back(glm::vec3(-5.0,  -5.0, -8.0));
-    objectPositions.push_back(glm::vec3( 0.0,  -5.0, -8.0));
-    objectPositions.push_back(glm::vec3( 5.0,  -5.0, -8.0));
-    objectPositions.push_back(glm::vec3(-5.0,  -5.0,  0.0));
-    objectPositions.push_back(glm::vec3( 0.0,  -5.0,  0.0));
-    objectPositions.push_back(glm::vec3( 5.0,  -5.0,  0.0));
-    objectPositions.push_back(glm::vec3(-5.0,  -5.0,  8.0));
-    objectPositions.push_back(glm::vec3( 0.0,  -5.0,  8.0));
-    objectPositions.push_back(glm::vec3( 5.0,  -5.0,  8.0));
+    objectPositions.push_back(glm::vec3(-5.0,  0.0, -8.0));
+    objectPositions.push_back(glm::vec3( 0.0,  0.0, -8.0));
+    objectPositions.push_back(glm::vec3( 5.0,  0.0, -8.0));
+    objectPositions.push_back(glm::vec3(-5.0,  0.0,  0.0));
+    objectPositions.push_back(glm::vec3( 0.0,  0.0,  0.0));
+    objectPositions.push_back(glm::vec3( 5.0,  0.0,  0.0));
+    objectPositions.push_back(glm::vec3(-5.0,  0.0,  8.0));
+    objectPositions.push_back(glm::vec3( 0.0,  0.0,  8.0));
+    objectPositions.push_back(glm::vec3( 5.0,  0.0,  8.0));
 
     // configure g-buffer framebuffer
     // ------------------------------
@@ -121,7 +121,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
-    // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
+    // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering
     unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
     glDrawBuffers(3, attachments);
     // create and attach depth buffer (renderbuffer)
@@ -144,14 +144,14 @@ int main()
     for (unsigned int i = 0; i < NR_LIGHTS; i++)
     {
         // calculate slightly random offsets
-        float xPos = ((rand() % 100) / 100.0) * 16.0 - 3.0;
-        float yPos = ((rand() % 100) / 100.0) * 16.0 - 4.0;
-        float zPos = ((rand() % 100) / 100.0) * 16.0 - 3.0;
+        float xPos = ((rand() % 100) / 100.0) * 16.0 - 8.0;
+        float yPos = ((rand() % 100) / 100.0) * 6.0 - 3.0;
+        float zPos = ((rand() % 100) / 100.0) * 20.0 - 10.0;
         lightPositions.push_back(glm::vec3(xPos, yPos, zPos));
         // also calculate random color
-        float rColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
-        float gColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
-        float bColor = ((rand() % 100) / 200.0f) + 0.5; // between 0.5 and 1.0
+        float rColor = ((rand() % 100) / 200.0f) + 0.2; // between 0.2 and 1.0
+        float gColor = ((rand() % 100) / 200.0f) + 0.2; // between 0.2 and 1.0
+        float bColor = ((rand() % 100) / 200.0f) + 0.2; // between 0.2 and 1.0
         lightColors.push_back(glm::vec3(rColor, gColor, bColor));
     }
 
@@ -161,12 +161,6 @@ int main()
     lightingPassShader.SetInteger("gPosition", 0);
     lightingPassShader.SetInteger("gNormal", 1);
     lightingPassShader.SetInteger("gAlbedoSpec", 2);
-
-    int framebufferWidth, framebufferHeight;
-    glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
-
-    std::cout << framebufferWidth << std::endl;
-    std::cout << framebufferHeight << std::endl;
 
     // render loop
     // -----------
@@ -258,7 +252,7 @@ int main()
                           GL_DEPTH_BUFFER_BIT,
                           GL_NEAREST);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    
+
         // 3. render lights on top of scene
         // --------------------------------
         lightBoxShader.Use();
@@ -299,7 +293,7 @@ void renderCube()
             // back face
             -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
              1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
-             1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right         
+             1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right
              1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
             -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
             -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
@@ -320,10 +314,10 @@ void renderCube()
             // right face
              1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
              1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
-             1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right         
+             1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right
              1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
              1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
-             1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left     
+             1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left
             // bottom face
             -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
              1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
@@ -334,10 +328,10 @@ void renderCube()
             // top face
             -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
              1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
-             1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right     
+             1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right
              1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
             -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
-            -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left        
+            -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left
         };
         glGenVertexArrays(1, &cubeVAO);
         glGenBuffers(1, &cubeVBO);
