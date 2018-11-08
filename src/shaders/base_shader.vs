@@ -11,7 +11,7 @@ uniform mat4 projection;
 
 uniform vec3 viewPos;
 
-#define NR_POINT_LIGHTS 4
+#define NR_POINT_LIGHTS 10
 struct PointLight {
     vec3 Position;
     vec3 Color;
