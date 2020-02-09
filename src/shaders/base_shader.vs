@@ -11,25 +11,17 @@ uniform mat4 projection;
 
 uniform vec3 viewPos;
 
-#define NR_POINT_LIGHTS 10
 struct PointLight {
     vec3 Position;
     vec3 Color;
 
+    float Constant;
     float Linear;
     float Quadratic;
 };
 
-struct DirLight {
-    vec3 Direction;
-
-    vec3 Ambient;
-    vec3 Diffuse;
-    vec3 Specular;
-};
-
+const int NR_POINT_LIGHTS = 14;
 uniform PointLight pointLights[NR_POINT_LIGHTS];
-uniform DirLight dirLight;
 
 out vec3 TangentLightPos[NR_POINT_LIGHTS];
 
@@ -37,7 +29,6 @@ out VS_OUT {
     vec3 FragPos;
     vec2 TexCoords;
     vec3 Normal;
-    vec3 TangentLightPos;
     vec3 TangentViewPos;
     vec3 TangentFragPos;
 } vs_out;
@@ -55,9 +46,8 @@ void main()
     vs_out.FragPos = vec3(model * vec4(aPos, 1.0));
     vs_out.TexCoords = aTexCoords;
     vs_out.Normal = normalMatrix * aNormal;
-    vs_out.TangentLightPos = TBN * dirLight.Direction;
-    vs_out.TangentViewPos  = TBN * viewPos;
-    vs_out.TangentFragPos  = TBN * vs_out.FragPos;
+    vs_out.TangentViewPos = TBN * viewPos;
+    vs_out.TangentFragPos = TBN * vs_out.FragPos;
 
     for(int i = 0; i < NR_POINT_LIGHTS; i++)
     {

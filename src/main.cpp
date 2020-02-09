@@ -8,16 +8,20 @@
 #include "model.hpp"
 
 void processInput(GLFWwindow* window);
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
+void setupPointLights(Shader shader, std::vector<glm::vec3> lightPositions, std::vector<glm::vec3> lightColors);
+void renderModel(Model model, Shader shader, std::vector<glm::vec3> objectPositions, glm::mat4 projection, glm::mat4 view);
+void renderPointLights(Shader shader, std::vector<glm::vec3> lightPositions, std::vector<glm::vec3> lightColors, glm::mat4 projection, glm::mat4 view);
 void renderCube();
 void renderQuad();
 
 // settings
 const unsigned int WINDOW_WIDTH = 1280;
 const unsigned int WINDOW_HEIGHT = 720;
+const unsigned int NR_POINT_LIGHTS = 14;
 
 // camera
 Camera camera(glm::vec3(-5.0f, 5.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -35.0f, -40.0f);
@@ -30,9 +34,6 @@ float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
 
 // flags
-bool dirLightFlag = true;
-bool dirLightFlagPressed = false;
-
 bool deferredShadingFlag = true;
 bool deferredShadingFlagPressed = false;
 
@@ -106,10 +107,13 @@ int main()
 
     // configure g-buffer framebuffer
     // ------------------------------
+    int framebufferWidth, framebufferHeight;
+    glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
+
     unsigned int gBuffer;
     glGenFramebuffers(1, &gBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
-    unsigned int gPosition, gNormal, gAlbedoSpec;
+    unsigned int gPosition, gNormal, gAlbedoSpec, gEmission;
     // position color buffer
     glGenTextures(1, &gPosition);
     glBindTexture(GL_TEXTURE_2D, gPosition);
@@ -124,16 +128,23 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
-    // color + specular + emission color buffer
+    // color + specular color buffer
     glGenTextures(1, &gAlbedoSpec);
     glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
+    // emission buffer
+    glGenTextures(1, &gEmission);
+    glBindTexture(GL_TEXTURE_2D, gEmission);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gEmission, 0);
     // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering
-    unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-    glDrawBuffers(3, attachments);
+    unsigned int attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
+    glDrawBuffers(4, attachments);
     // create and attach depth buffer (renderbuffer)
     unsigned int rboDepth;
     glGenRenderbuffers(1, &rboDepth);
@@ -147,21 +158,20 @@ int main()
 
     // lighting info
     // -------------
-    const unsigned int NR_LIGHTS = 10;
     std::vector<glm::vec3> lightPositions;
     std::vector<glm::vec3> lightColors;
-    srand(1337);
-    for (unsigned int i = 0; i < NR_LIGHTS; i++)
+    srand(99);
+    for (unsigned int i = 0; i < NR_POINT_LIGHTS; i++)
     {
         // calculate slightly random offsets
         float xPos = ((rand() % 100) / 100.0) * 16.0 - 8.0;
-        float yPos = ((rand() % 100) / 100.0) * 8.0 - 2.0;
+        float yPos = ((rand() % 100) / 100.0) * 4.0 - 2.0;
         float zPos = ((rand() % 100) / 100.0) * 10.0 - 5.0;
         lightPositions.push_back(glm::vec3(xPos, yPos, zPos));
         // also calculate random color
-        float rColor = ((rand() % 100) / 200.0) + 0.2;
-        float gColor = ((rand() % 100) / 200.0) + 0.2;
-        float bColor = ((rand() % 100) / 200.0) + 0.2;
+        float rColor = ((rand() % 100) / 200.0) + 0.1;
+        float gColor = ((rand() % 100) / 200.0) + 0.1;
+        float bColor = ((rand() % 100) / 200.0) + 0.1;
         lightColors.push_back(glm::vec3(rColor, gColor, bColor));
     }
 
@@ -171,6 +181,7 @@ int main()
     lightingPassShader.SetInteger("gPosition", 0);
     lightingPassShader.SetInteger("gNormal", 1);
     lightingPassShader.SetInteger("gAlbedoSpec", 2);
+    lightingPassShader.SetInteger("gEmission", 3);
 
     // render loop
     // -----------
@@ -191,67 +202,25 @@ int main()
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
+                                                (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT,
+                                                0.1f, 100.0f);
+        glm::mat4 view = camera.GetViewMatrix();
+
         if (!deferredShadingFlag)
         {
             // ------------------- FORWARD SHADING START --------------- //
             baseShader.Use();
-
-            // set lighting uniforms
+            // set shader uniforms
             baseShader.SetVector3f("viewPos", camera.Position);
-            baseShader.SetInteger("dirLightFlag", dirLightFlag);
-
-            // light properties
-            // directional light
-            baseShader.SetVector3f("dirLight.Direction", 0.0f, 1.0f, 0.0f);
-            baseShader.SetVector3f("dirLight.Ambient", 0.05f, 0.05f, 0.05f);
-            baseShader.SetVector3f("dirLight.Diffuse", 0.2f, 0.2f, 0.2f);
-            baseShader.SetVector3f("dirLight.Specular", 0.5f, 0.5f, 0.5f);
-
-            // light properties
-            for (unsigned int i = 0; i < lightPositions.size(); i++)
-            {
-                baseShader.SetVector3f("pointLights[" + std::to_string(i) + "].Position", lightPositions[i]);
-                baseShader.SetVector3f("pointLights[" + std::to_string(i) + "].Color", lightColors[i]);
-                // update attenuation parameters and calculate radius
-                const float constant = 1.0; // note that we don't send this to the shader, we assume it is always 1.0 (in our case)
-                const float linear = 0.35;
-                const float quadratic = 0.44;
-                baseShader.SetFloat("pointLights[" + std::to_string(i) + "].Linear", linear);
-                baseShader.SetFloat("pointLights[" + std::to_string(i) + "].Quadratic", quadratic);
-            }
-            // pass projection matrix to shader (note that in this case it could change every frame)
-            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
-                                                    (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT,
-                                                    0.1f, 100.0f);
             baseShader.SetMatrix4("projection", projection);
-
-            // camera/view transformation
-            glm::mat4 view = camera.GetViewMatrix();
             baseShader.SetMatrix4("view", view);
-
-            for (unsigned int i = 0; i < objectPositions.size(); i++)
-            {
-                glm::mat4 model = glm::mat4(1.0);
-                model = glm::translate(model, objectPositions[i]);
-                model = glm::scale(model, glm::vec3(0.05f));
-                if (rotateModelFlag)
-                    model = glm::rotate(model, (float)glfwGetTime() * -1.0f, glm::normalize(glm::vec3(-0.5, -0.6, 0.8)));
-                baseShader.SetMatrix4("model", model);
-                shipModel.Draw(baseShader);
-            }
-
-            lightBoxShader.Use();
-            lightBoxShader.SetMatrix4("projection", projection);
-            lightBoxShader.SetMatrix4("view", view);
-            for (unsigned int i = 0; i < lightPositions.size(); i++)
-            {
-                glm::mat4 model = glm::mat4(1.0);
-                model = glm::translate(model, lightPositions[i]);
-                model = glm::scale(model, glm::vec3(0.05f));
-                lightBoxShader.SetMatrix4("model", model);
-                lightBoxShader.SetVector3f("lightColor", lightColors[i]);
-                renderCube();
-            }
+            // point light properties
+            setupPointLights(baseShader, lightPositions, lightColors);
+            // render ship models
+            renderModel(shipModel, baseShader, objectPositions, projection, view);
+            // render point lights
+            renderPointLights(lightBoxShader, lightPositions, lightColors, projection, view);
             // ------------------- FORWARD SHADING END --------------- //
         }
 
@@ -262,53 +231,24 @@ int main()
             // -----------------------------------------------------------------
             glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-                geometryPassShader.Use();
-                // pass projection matrix to shader (note that in this case it could change every frame)
-                glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
-                                                        (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT,
-                                                        0.1f, 100.0f);
-                geometryPassShader.SetMatrix4("projection", projection);
-
-                // camera/view transformation
-                glm::mat4 view = camera.GetViewMatrix();
-                geometryPassShader.SetMatrix4("view", view);
-
-                for (unsigned int i = 0; i < objectPositions.size(); i++)
-                {
-                    glm::mat4 model = glm::mat4(1.0);
-                    model = glm::translate(model, objectPositions[i]);
-                    model = glm::scale(model, glm::vec3(0.05f));
-                    if (rotateModelFlag)
-                        model = glm::rotate(model, (float)glfwGetTime() * -1.0f, glm::normalize(glm::vec3(-0.5, -0.6, 0.8)));
-                    geometryPassShader.SetMatrix4("model", model);
-                    shipModel.Draw(geometryPassShader);
-                }
+                renderModel(shipModel, geometryPassShader, objectPositions, projection, view);
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
             // 2. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
             // -----------------------------------------------------------------------------------------------------------------------
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             lightingPassShader.Use();
+            lightingPassShader.SetVector3f("viewPos", camera.Position);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, gPosition);
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, gNormal);
             glActiveTexture(GL_TEXTURE2);
             glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
-            // send light relevant uniforms
-            for (unsigned int i = 0; i < lightPositions.size(); i++)
-            {
-                lightingPassShader.SetVector3f("pointLights[" + std::to_string(i) + "].Position", lightPositions[i]);
-                lightingPassShader.SetVector3f("pointLights[" + std::to_string(i) + "].Color", lightColors[i]);
-                // update attenuation parameters and calculate radius
-                const float constant = 1.0; // note that we don't send this to the shader, we assume it is always 1.0 (in our case)
-                const float linear = 0.35;
-                const float quadratic = 0.44;
-                lightingPassShader.SetFloat("pointLights[" + std::to_string(i) + "].Linear", linear);
-                lightingPassShader.SetFloat("pointLights[" + std::to_string(i) + "].Quadratic", quadratic);
-            }
-            lightingPassShader.SetVector3f("viewPos", camera.Position);
+            glActiveTexture(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_2D, gEmission);
+            // point light properties
+            setupPointLights(lightingPassShader, lightPositions, lightColors);
             // render the quad
             renderQuad();
 
@@ -325,18 +265,8 @@ int main()
 
             // 3. render lights on top of scene
             // --------------------------------
-            lightBoxShader.Use();
-            lightBoxShader.SetMatrix4("projection", projection);
-            lightBoxShader.SetMatrix4("view", view);
-            for (unsigned int i = 0; i < lightPositions.size(); i++)
-            {
-                glm::mat4 model = glm::mat4(1.0);
-                model = glm::translate(model, lightPositions[i]);
-                model = glm::scale(model, glm::vec3(0.05f));
-                lightBoxShader.SetMatrix4("model", model);
-                lightBoxShader.SetVector3f("lightColor", lightColors[i]);
-                renderCube();
-            }
+            glViewport(0, 0, framebufferWidth, framebufferHeight);
+            renderPointLights(lightBoxShader, lightPositions, lightColors, projection, view);
             // ------------------- DEFERRED SHADING END --------------- //
         }
 
@@ -350,6 +280,58 @@ int main()
     // ------------------------------------------------------------------
     glfwTerminate();
     return 0;
+}
+
+// renderModel() renders the given model with the given shader
+// -------------------------------------------------
+void renderModel(Model model, Shader shader, std::vector<glm::vec3> objectPositions, glm::mat4 projection, glm::mat4 view)
+{
+    shader.Use();
+    shader.SetMatrix4("projection", projection);
+    shader.SetMatrix4("view", view);
+
+    for (unsigned int i = 0; i < objectPositions.size(); i++)
+    {
+        glm::mat4 modelMat = glm::mat4(1.0);
+        modelMat = glm::translate(modelMat, objectPositions[i]);
+        modelMat = glm::scale(modelMat, glm::vec3(0.05f));
+        if (rotateModelFlag)
+            modelMat = glm::rotate(modelMat, (float)glfwGetTime() * -0.4f, glm::normalize(glm::vec3(-0.5, -0.6, 0.8)));
+        shader.SetMatrix4("model", modelMat);
+        model.Draw(shader);
+    }
+}
+
+void setupPointLights(Shader shader, std::vector<glm::vec3> lightPositions, std::vector<glm::vec3> lightColors)
+{
+    for (unsigned int i = 0; i < lightPositions.size(); i++)
+    {
+        shader.SetVector3f("pointLights[" + std::to_string(i) + "].Position", lightPositions[i]);
+        shader.SetVector3f("pointLights[" + std::to_string(i) + "].Color", lightColors[i]);
+        // update attenuation parameters and calculate radius
+        const float constant  = 1.0;
+        const float linear    = 0.5;
+        const float quadratic = 1.2;
+        shader.SetFloat("pointLights[" + std::to_string(i) + "].Constant", constant);
+        shader.SetFloat("pointLights[" + std::to_string(i) + "].Linear", linear);
+        shader.SetFloat("pointLights[" + std::to_string(i) + "].Quadratic", quadratic);
+    }
+}
+
+void renderPointLights(Shader shader, std::vector<glm::vec3> lightPositions, std::vector<glm::vec3> lightColors, glm::mat4 projection, glm::mat4 view)
+{
+    shader.Use();
+    shader.SetMatrix4("projection", projection);
+    shader.SetMatrix4("view", view);
+    for (unsigned int i = 0; i < lightPositions.size(); i++)
+    {
+        glm::mat4 modelMat = glm::mat4(1.0);
+        modelMat = glm::translate(modelMat, lightPositions[i]);
+        modelMat = glm::scale(modelMat, glm::vec3(0.05f));
+        shader.SetMatrix4("model", modelMat);
+        shader.SetVector3f("lightColor", lightColors[i]);
+        renderCube();
+    }
 }
 
 // renderCube() renders a 1x1 3D cube in NDC.
@@ -478,28 +460,20 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
         camera.ProcessKeyboard(CAMERA_UP, deltaTime);
 
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS && !dirLightFlagPressed)
-    {
-        dirLightFlag = !dirLightFlag;
-        dirLightFlagPressed = true;
-    }
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_RELEASE)
-        dirLightFlagPressed = false;
-
-    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS && !deferredShadingFlagPressed)
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS && !deferredShadingFlagPressed)
     {
         deferredShadingFlag = !deferredShadingFlag;
         deferredShadingFlagPressed = true;
     }
-    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_RELEASE)
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_RELEASE)
         deferredShadingFlagPressed = false;
 
-    if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS && !rotateModelFlagPressed)
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS && !rotateModelFlagPressed)
     {
         rotateModelFlag = !rotateModelFlag;
         rotateModelFlagPressed = true;
     }
-    if (glfwGetKey(window, GLFW_KEY_3) == GLFW_RELEASE)
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_RELEASE)
         rotateModelFlagPressed = false;
 }
 
@@ -532,9 +506,9 @@ void scroll_callback(GLFWwindow * /* window */, double /* xoffset */, double yof
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow * /* window */, int width, int height)
+void framebuffer_size_callback(GLFWwindow * window, int /* width */, int /* height */)
 {
-    // make sure the viewport matches the new window dimensions; note that width and
-    // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
+    int framebufferWidth, framebufferHeight;
+    glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
+    glViewport(0, 0, framebufferWidth, framebufferHeight);
 }
